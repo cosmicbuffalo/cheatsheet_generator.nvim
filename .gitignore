@@ -1,0 +1,48 @@
+# Neovim plugin specific
+*.swp
+*.swo
+*~
+
+# Temporary files
+.tmp/
+tmp/
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE/Editor specific
+.vscode/
+.idea/
+*.iml
+
+# Lua specific
+luac.out
+
+# Testing artifacts
+.luacov
+.luacov.stats.out
+
+# Build artifacts
+build/
+dist/
+
+# Cache directories
+.cache/
+
+# Local development files
+.local/
+local/
+
+# Backup files
+*.bak
+*.backup
+
+# Log files
+*.log
+.claude/settings.local.json
