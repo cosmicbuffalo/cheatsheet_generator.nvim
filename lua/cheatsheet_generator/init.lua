@@ -91,23 +91,23 @@ end
 function M.install_hook()
 	local cwd = vim.fn.getcwd()
 	local git_dir = vim.fn.finddir(".git", cwd .. ";")
-	
+
 	if git_dir == "" then
 		vim.notify("Not in a git repository", vim.log.levels.ERROR)
 		return false
 	end
-	
+
 	local hooks_dir = git_dir .. "/hooks"
 	local hook_path = hooks_dir .. "/pre-commit"
-	
+
 	-- Create hooks directory if it doesn't exist
 	vim.fn.mkdir(hooks_dir, "p")
-	
+
 	-- Get the plugin directory
 	local plugin_path = debug.getinfo(1, "S").source:sub(2)
 	local plugin_dir = vim.fn.fnamemodify(plugin_path, ":h:h:h")
 	local source_hook = plugin_dir .. "/hooks/pre-commit"
-	
+
 	-- Determine the Neovim config directory
 	local nvim_config_dir
 	local nvim_appname = os.getenv("NVIM_APPNAME")
@@ -116,35 +116,35 @@ function M.install_hook()
 	else
 		nvim_config_dir = vim.fn.stdpath("config")
 	end
-	
+
 	-- Read the source hook and customize it for this config
 	local source_content = vim.fn.readfile(source_hook)
 	local customized_content = {}
-	
+
 	for _, line in ipairs(source_content) do
 		if line:match("nvim %-%-headless") then
 			-- Customize the nvim command to use the correct config directory
 			if nvim_appname and nvim_appname ~= "" then
-				line = line:gsub(
-					"nvim %-%-headless", 
-					"NVIM_APPNAME=" .. nvim_appname .. " nvim --headless"
-				)
+				line = line:gsub("nvim %-%-headless", "NVIM_APPNAME=" .. nvim_appname .. " nvim --headless")
 			end
 		end
 		table.insert(customized_content, line)
 	end
-	
+
 	-- Write the customized hook
 	vim.fn.writefile(customized_content, hook_path)
-	
+
 	-- Make it executable
 	vim.fn.system("chmod +x '" .. hook_path .. "'")
 	if vim.v.shell_error ~= 0 then
 		vim.notify("Failed to make pre-commit hook executable", vim.log.levels.ERROR)
 		return false
 	end
-	
-	vim.notify("Pre-commit hook installed successfully at " .. hook_path .. " (configured for " .. nvim_config_dir .. ")", vim.log.levels.INFO)
+
+	vim.notify(
+		"Pre-commit hook installed successfully at " .. hook_path .. " (configured for " .. nvim_config_dir .. ")",
+		vim.log.levels.INFO
+	)
 	return true
 end
 
@@ -158,11 +158,10 @@ function M.create_commands()
 			vim.notify("Error generating cheatsheet: " .. tostring(err), vim.log.levels.ERROR)
 		end
 	end, { desc = "Generate keymap cheatsheet" })
-	
+
 	vim.api.nvim_create_user_command("CheatsheetInstallHook", function()
 		M.install_hook()
 	end, { desc = "Install pre-commit hook for automatic cheatsheet generation" })
 end
 
 return M
-
