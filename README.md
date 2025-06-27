@@ -40,56 +40,64 @@ use {
 
 ## Configuration
 
+### Minimal Configuration
+
+The plugin works out of the box with sensible defaults:
+
 ```lua
 require("cheatsheet_generator").setup({
-  -- File paths and directories to scan
-  plugin_dirs = { "lua/plugins" },
-  ftplugin_dir = "ftplugin", 
-  config_keymap_files = { "lua/config/keymaps.lua" },
+  -- That's it! Uses defaults for everything
+})
+```
+
+### Full Configuration Example
+
+```lua
+require("cheatsheet_generator").setup({
+  -- File paths and directories to scan (optional overrides)
+  plugin_dirs = { "lua/plugins" }, -- Default: { "lua/plugins" }
+  config_keymap_files = { "lua/config/keymaps.lua" }, -- Default: { "lua/config/keymaps.lua" }
+  -- ftplugin_dir = "ftplugin", -- Always included automatically
   
-  -- Built-in keymaps configuration
+  -- Built-in keymaps (uses plugin's built-in keymaps by default)
   built_in_keymaps = {
-    enabled = true,
-    module = "config.built_in_keymaps", -- Module to require for built-in keymaps
-    section_order = {
-      "mode_changes",
-      "motions",
-      "edit_operations", 
-      "default_text_objects",
-      "search",
-      "insert_mode",
-      "visual_mode",
-      "macros_and_registers",
-      "marks",
-      "navigation", 
-      "folds",
-    }
+    enabled = true, -- Default: true
+    -- module and section_order use plugin defaults
   },
   
   -- Git/GitHub configuration
   git = {
-    enabled = true,
-    default_branch = "main",
-    base_url = nil, -- Auto-detected from git remote
+    enabled = true, -- Default: true
+    default_branch = "main", -- Default: "main"
+    base_url = nil, -- Default: auto-detected from git remote
   },
   
   -- Output configuration
   output = {
-    file = "CHEATSHEET.md",
-    title = "Neovim Keymap Cheatsheet", 
-    include_date = true,
-    notes = {
-      "This cheatsheet is automatically generated.",
-      "It includes all keymaps from built-in defaults, custom configuration, plugins, and ftplugins.",
+    file = "CHEATSHEET.md", -- Default: "CHEATSHEET.md"
+    title = "Neovim Keymap Cheatsheet", -- Default title
+    include_date = true, -- Default: true
+    generation_info = {
+      enabled = true, -- Default: true
+      script_path = "bin/generate_cheatsheet.lua", -- Optional: for legacy references
+      hook_path = "hooks/pre-commit", -- Optional: git hook reference
+    },
+    runtime_note = {
+      enabled = true, -- Default: true
+      suggestion = ":map", -- Default: ":map"
+      keymap_search = "<leader>sk", -- Optional: keymap for fuzzy search
+    },
+    additional_notes = {
+      "Any additional custom notes can go here",
     }
   },
   
-  -- Plugin-specific fixes/post-processing
+  -- Plugin-specific fixes/post-processing (optional)
   plugin_fixes = {
     ["eyeliner.nvim"] = { keymap = "<leader>uf", source = "lua/plugins/editor.lua" }
   },
   
-  -- Exclude patterns
+  -- Exclude patterns (optional)
   exclude = {
     sources = { "lua/personal/" },
     keymaps = { "^<Plug>" },
@@ -97,6 +105,13 @@ require("cheatsheet_generator").setup({
   }
 })
 ```
+
+### Key Features
+
+- **Automatic Defaults**: Works with zero configuration for standard Neovim setups
+- **Built-in Keymaps**: Includes comprehensive built-in Neovim keymap definitions
+- **Dynamic Notes**: Automatically generates documentation based on your configuration
+- **Smart Detection**: Auto-detects Git repositories and file structures
 
 ## Usage
 
@@ -112,14 +127,34 @@ Or in Lua:
 require("cheatsheet_generator").generate()
 ```
 
-### Example Integration with Git Hooks
+### Install Pre-commit Hook
 
-You can automatically generate the cheatsheet on every commit by adding it to your git hooks:
+The plugin includes a pre-commit hook that automatically generates the cheatsheet when you commit:
+
+```vim
+:CheatsheetInstallHook
+```
+
+Or in Lua:
+
+```lua
+require("cheatsheet_generator").install_hook()
+```
+
+This will:
+- Copy the pre-commit hook to `.git/hooks/pre-commit`
+- Make it executable
+- Automatically generate the cheatsheet on every commit
+- Add the updated cheatsheet to the commit if it changed
+
+### Manual Git Hook Setup
+
+If you prefer to set up the git hook manually:
 
 ```bash
 #!/bin/sh
 # .git/hooks/pre-commit
-nvim --headless -c "CheatsheetGenerate" -c "qa"
+nvim --headless -c "lua require('cheatsheet_generator').generate_with_context('pre-commit')" -c "qa"
 git add CHEATSHEET.md
 ```
 
