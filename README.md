@@ -2,7 +2,7 @@
 
 A Neovim plugin for automatically generating comprehensive keymap cheatsheets in Markdown format.
 
-> [!IMPORTANT]
+> [!WARNING]
 > This plugin is still a work in progress and is currently only guaranteed to work on neovim configurations that follow the Braintree neovim config structure. I wouldn't recommend trying this plugin out on your own config unless you're prepared for a lot of debugging and reorganization of your config!
 
 ## Features
@@ -232,6 +232,3 @@ The generated cheatsheet includes:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
-
-MIT License - see LICENSE file for details.
