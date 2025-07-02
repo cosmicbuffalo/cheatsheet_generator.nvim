@@ -2,6 +2,9 @@
 
 A Neovim plugin for automatically generating comprehensive keymap cheatsheets in Markdown format.
 
+> [!IMPORTANT]
+> This plugin is still a work in progress and is currently only guaranteed to work on neovim configurations that follow the Braintree neovim config structure. I wouldn't recommend trying this plugin out on your own config unless you're prepared for a lot of debugging and reorganization of your config!
+
 ## Features
 
 - 🔍 **Comprehensive Detection**: Finds keymaps from built-in defaults, custom config, plugins, and ftplugins
