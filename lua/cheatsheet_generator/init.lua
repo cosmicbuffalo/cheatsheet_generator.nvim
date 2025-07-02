@@ -3,6 +3,8 @@ local M = {}
 local default_config = {
 	plugin_dirs = { "lua/plugins" },
 	config_keymap_files = { "lua/config/keymaps.lua" },
+	
+	manual_keymaps = {},
 
 	built_in_keymaps = {
 		enabled = true,
