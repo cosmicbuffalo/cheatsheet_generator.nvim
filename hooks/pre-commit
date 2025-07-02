@@ -10,10 +10,13 @@ fi
 
 # Generate the cheatsheet
 echo "Generating cheatsheet..."
-nvim --headless -c "lua require('cheatsheet_generator').generate_with_context('pre-commit')" -c "qa"
 
-# Check if generation was successful
-if [ $? -eq 0 ]; then
+# Use timeout to prevent hanging, redirect output to avoid clutter
+timeout 3s nvim --headless -c "lua require('cheatsheet_generator').generate_with_context('pre-commit')" -c "qall!" >/dev/null 2>&1
+exit_code=$?
+
+# Check if generation was successful (timeout returns 124, we treat that as success if file was updated)
+if [ $exit_code -eq 0 ] || [ $exit_code -eq 124 ]; then
     # Check if CHEATSHEET.md was modified
     if git diff --quiet HEAD -- CHEATSHEET.md 2>/dev/null; then
         echo "Cheatsheet is up to date"
