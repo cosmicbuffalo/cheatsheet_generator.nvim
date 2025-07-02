@@ -27,6 +27,7 @@ local function main()
             print("Error: Configuration validation failed: " .. err)
             return 1
         end
+        
     end
 
     -- Require keymap files from configuration if specified

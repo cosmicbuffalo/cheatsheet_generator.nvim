@@ -39,7 +39,18 @@ require("cheatsheet_generator").setup({
   plugin_dirs = { "lua/plugins" }, 
   -- Where should the generator look for custom keymaps
   config_keymap_files = { "lua/config/keymaps.lua" },
-  
+  -- Manual keymap additions (optional)
+  manual_keymaps = {
+    ["telescope.nvim"] = {
+      -- examples of custom actions to be included
+      { keymap = "<C-t>", mode = "i", desc = "Scope to directory (with picker open)", source = "lua/plugins/telescope.lua" },
+      { keymap = "d", mode = "n", desc = "Delete Buffer (in buffer explorer)", source = "lua/plugins/telescope.lua" },
+    },
+    ["nvim-tree.lua"] = {
+      -- source is optional, but recommended
+      { keymap = "a", mode = "n", desc = "Create file/directory" }, -- source defaults to "Manual addition"
+    },
+  },
   -- Built-in keymaps (uses plugin's built-in keymaps by default)
   built_in_keymaps = {
     enabled = true,
@@ -88,6 +99,50 @@ require("cheatsheet_generator").setup({
 - **Built-in Keymaps**: Includes comprehensive built-in Neovim keymap definitions
 - **Dynamic Notes**: Automatically generates documentation based on your configuration
 - **Smart Detection**: Auto-detects Git repositories and file structures
+
+### Manual Keymap Additions
+
+The cheatsheet generator can only collect and parse keymaps that show up explicitly in your neovim config's plugin specs. Most plugins have built in keymaps that will not be included in the cheatsheet because they don't show up explicitly in your config. The `manual_keymaps` configuration attempts to remedy this by allowing you to manually specify keymaps that should be included in the cheatsheet. Adding entries here under specific plugin names will ensure that your manually added keymaps appear in the cheatsheet under the same grouping as the keymaps that came from that plugin's lazy plugin spec in your config.
+
+#### Configuration Format
+
+```lua
+manual_keymaps = {
+  ["plugin-name"] = {
+    { keymap = "key", mode = "mode", desc = "description", source = "optional-source" },
+    -- more keymaps...
+  },
+}
+```
+
+#### Field Requirements
+
+- **`keymap`** (required): The key combination (e.g., `"<C-t>"`, `"<leader>ff"`, `"dd"`)
+- **`mode`** (required): The mode(s) where this keymap is active (e.g., `"n"`, `"i"`, `"v"`)
+- **`desc`** (required): Human-readable description of what the keymap does
+- **`source`** (optional): Source file reference (defaults to `"manually added"`)
+
+#### Plugin Name Format
+
+Use the plugin name without the GitHub username (e.g., `"telescope.nvim"` not `"nvim-telescope/telescope.nvim"`). The keymaps will be automatically grouped with other keymaps from the same plugin.
+
+#### Example Use Case: Telescope
+
+Telescope pickers have a lot of built in keymaps that you might want to include in the cheatsheet, so if you wanted to include some or all of those you could add something like this to your config:
+```lua
+manual_keymaps = {
+    ["telescope.nvim"] = {
+        -- Built in telescope keymaps
+        { keymap = "<Down>", mode = "i", desc = "Next item", source = "Built in telescope default" },
+        { keymap = "<Up>", mode = "i", desc = "Previous item", source = "Built in telescope default" },
+        { keymap = "<C-/>", mode = "i", desc = "Show mappings for picker actions", source = "Built in telescope default" },
+        { keymap = "<C-u>", mode = "i", desc = "Scroll up in preview window", source = "Built in telescope default" },
+        { keymap = "<C-d>", mode = "i", desc = "Scroll down in preview window", source = "Built in telescope default" },
+        { keymap = "<C-q>", mode = "i", desc = "Send all items not filtered to quickfixlist", source = "Built in telescope default" },
+        -- ...etc
+    }
+}
+```
 
 ## Usage
 
