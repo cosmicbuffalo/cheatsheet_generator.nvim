@@ -2,6 +2,14 @@
 
 vim.g.mapleader = " "
 
+-- Add the plugin directory to Lua package path
+local script_path = debug.getinfo(1, "S").source:sub(2)
+local plugin_root = script_path:match("(.*/)")
+if plugin_root then
+    plugin_root = plugin_root:gsub("/lua/cheatsheet_generator/$", "")
+    package.path = plugin_root .. "/lua/?.lua;" .. plugin_root .. "/lua/?/init.lua;" .. package.path
+end
+
 local keymap_collector = require("cheatsheet_generator.keymap_collector")
 local formatter = require("cheatsheet_generator.formatter")
 local config_validator = require("cheatsheet_generator.config_validator")
