@@ -545,6 +545,22 @@ function M._parse_keymap_patterns(line, line_num, file, keymaps, in_keys_section
         end,
 
         function()
+            local mode, lhs, func_name, desc = line:match('vim%.keymap%.set%("([^"]+)", "([^"]+)", ([%w_]+),%s*{.*desc = "([^"]+)"')
+            if mode and lhs and func_name then
+                return {
+                    lhs = lhs,
+                    rhs = func_name,
+                    desc = desc,
+                    mode = mode,
+                    source = file,
+                    plugin = nil,
+                    plugin_disabled = false,
+                    line_number = line_num,
+                }
+            end
+        end,
+
+        function()
             local mode, lhs, desc = line:match('map%("([^"]+)", "([^"]+)", function%(%).*desc = "([^"]+)"')
             if mode and lhs then
                 return {
