@@ -298,7 +298,7 @@ function M._parse_keymap_patterns(line, line_num, file, keymaps, in_keys_section
         end,
 
         function()
-            local lhs, desc = line:match('{ "([^"]+)", desc = "([^"]+)" }')
+            local lhs, desc = line:match('{ "([^"]+)",%s*desc = "([^"]+)" }')
             if lhs then
                 return {
                     lhs = lhs,
@@ -378,7 +378,7 @@ function M._parse_keymap_patterns(line, line_num, file, keymaps, in_keys_section
         end,
 
         function()
-            local lhs, func, desc, modes = line:match('{ "([^"]+)", (function%([^)]*%).-end),%s*desc = "([^"]+)",%s*mode = ({ [^}]+ })')
+            local lhs, func, desc, modes = line:match('{ "([^"]+)",%s*(function%([^)]*%).-end),%s*desc = "([^"]+)",%s*mode = ({ [^}]+ })')
             if lhs then
                 local mode_list = modes:match('{ "([^"]+)"') or "n"
                 return {
