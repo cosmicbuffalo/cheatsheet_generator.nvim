@@ -115,6 +115,7 @@ function M._parse_file(file)
     local multiline_keymap = nil
     local multiline_lhs = nil
     local multiline_line_num = nil
+    local multiline_mode = nil
 
     local line_num = 1
     local line_success, lines_iter = pcall(io.lines, file)
@@ -137,7 +138,7 @@ function M._parse_file(file)
                     lhs = multiline_lhs,
                     rhs = "function",
                     desc = desc,
-                    mode = "n",
+                    mode = multiline_mode or "n",
                     source = file,
                     plugin = in_keys_section and (current_plugin or keys_section_plugin or main_plugin) or nil,
                     plugin_disabled = current_plugin_disabled,
@@ -146,6 +147,7 @@ function M._parse_file(file)
                 multiline_keymap = nil
                 multiline_lhs = nil
                 multiline_line_num = nil
+                multiline_mode = nil
             end
         end
 
@@ -168,6 +170,22 @@ function M._parse_file(file)
                 multiline_lhs = key_line_lhs
                 multiline_line_num = line_num
             end
+        end
+
+        local map_mode, map_lhs = line:match('^%s*map%(["\']([^"\']+)["\'],%s*["\']([^"\']+)["\'],%s*function%(%)%s*$')
+        if map_mode and map_lhs then
+            multiline_keymap = true
+            multiline_lhs = map_lhs
+            multiline_mode = map_mode
+            multiline_line_num = line_num
+        end
+
+        local vks_mode, vks_lhs = line:match('^%s*vim%.keymap%.set%(["\']([^"\']+)["\'],%s*["\']([^"\']+)["\'],%s*function%(%)%s*$')
+        if vks_mode and vks_lhs then
+            multiline_keymap = true
+            multiline_lhs = vks_lhs
+            multiline_mode = vks_mode
+            multiline_line_num = line_num
         end
 
         M._parse_keymap_patterns(line, line_num, file, keymaps, in_keys_section, current_plugin, keys_section_plugin, main_plugin, current_plugin_disabled)
