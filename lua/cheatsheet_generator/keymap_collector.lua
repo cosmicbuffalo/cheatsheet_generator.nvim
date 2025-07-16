@@ -288,7 +288,7 @@ function M._add_manual_keymaps(config, all_keymaps)
     end
     
     for plugin_name, keymaps in pairs(config.manual_keymaps) do
-        for _, manual_keymap in ipairs(keymaps) do
+        for i, manual_keymap in ipairs(keymaps) do
             local normalized_lhs = utils.normalize_keymap(manual_keymap.keymap)
             local description = utils.normalize_description(manual_keymap.desc)
             local source = manual_keymap.source or "Manual addition"
@@ -301,6 +301,7 @@ function M._add_manual_keymaps(config, all_keymaps)
                 plugin = plugin_name,
                 plugin_disabled = false,
                 line_number = nil,
+                manual_order = i,  -- Preserve original order from config
                 raw_keymap = { 
                     lhs = manual_keymap.keymap, 
                     desc = manual_keymap.desc, 

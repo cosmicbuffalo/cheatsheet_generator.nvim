@@ -293,11 +293,14 @@ function M._sort_consolidated_keymaps(consolidated)
 
     local built_in_keymaps = {}
     local plugin_keymaps = {}
+    local manual_keymaps = {}
     local other_keymaps = {}
 
     for _, km in ipairs(consolidated) do
         if km.built_in_section then
             table.insert(built_in_keymaps, km)
+        elseif km.manual_order then
+            table.insert(manual_keymaps, km)
         elseif km.line_number then
             table.insert(plugin_keymaps, km)
         else
@@ -321,6 +324,14 @@ function M._sort_consolidated_keymaps(consolidated)
         end
         return (a.line_number or 0) < (b.line_number or 0)
     end)
+    
+    -- Sort manual keymaps by their original order in the config
+    table.sort(manual_keymaps, function(a, b)
+        if a.plugin ~= b.plugin then
+            return a.plugin < b.plugin
+        end
+        return a.manual_order < b.manual_order
+    end)
 
     table.sort(built_in_keymaps, function(a, b)
         if a.built_in_order and b.built_in_order then
@@ -340,6 +351,9 @@ function M._sort_consolidated_keymaps(consolidated)
         table.insert(result, km)
     end
     for _, km in ipairs(plugin_keymaps) do
+        table.insert(result, km)
+    end
+    for _, km in ipairs(manual_keymaps) do
         table.insert(result, km)
     end
     for _, km in ipairs(other_keymaps) do
