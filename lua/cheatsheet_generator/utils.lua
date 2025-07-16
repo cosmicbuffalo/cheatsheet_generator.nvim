@@ -204,6 +204,7 @@ function M.consolidate_keymaps(keymaps)
                 built_in_section = km.built_in_section,
                 built_in_order = km.built_in_order,
                 line_number = km.line_number,
+                manual_order = km.manual_order,
                 modes = { km.mode },
             }
         else
@@ -256,6 +257,7 @@ function M.consolidate_keymaps(keymaps)
                 built_in_section = km.built_in_section,
                 built_in_order = km.built_in_order,
                 line_number = km.line_number,
+                manual_order = km.manual_order,
                 modes = modes,
             }
         end
@@ -281,6 +283,7 @@ function M.consolidate_keymaps(keymaps)
             built_in_section = group.built_in_section,
             built_in_order = group.built_in_order,
             line_number = group.line_number,
+            manual_order = group.manual_order,
             mode = table.concat(unique_modes, ","),
         })
     end
