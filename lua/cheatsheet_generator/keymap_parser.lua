@@ -120,6 +120,9 @@ function M._parse_file(file)
   local main_plugin = nil
   local main_plugin_depth = 0
   local plugin_stack = {}
+  local in_config_function = false
+  local config_function_plugin = nil
+  local config_function_depth = 0
 
   local multiline_keymap = nil
   local multiline_lhs = nil
@@ -137,6 +140,20 @@ function M._parse_file(file)
     local open_braces = select(2, line:gsub("{", ""))
     local close_braces = select(2, line:gsub("}", ""))
     brace_depth = brace_depth + open_braces - close_braces
+
+    -- Check if we're entering a config function
+    if line:match("config%s*=%s*function") then
+      in_config_function = true
+      config_function_plugin = current_plugin or main_plugin
+      config_function_depth = brace_depth
+    end
+
+    -- Check if we're exiting the config function
+    if in_config_function and brace_depth < config_function_depth then
+      in_config_function = false
+      config_function_plugin = nil
+      config_function_depth = 0
+    end
 
     current_plugin, main_plugin, main_plugin_depth, current_plugin_disabled, in_keys_section, keys_section_plugin, keys_section_locked =
       M._update_plugin_context(
@@ -209,6 +226,83 @@ function M._parse_file(file)
       multiline_line_num = line_num
     end
 
+    -- Handle multiline vim.keymap.set that starts on one line
+    local vks_multiline_start = line:match("^%s*vim%.keymap%.set%(%s*$")
+    if vks_multiline_start then
+      multiline_keymap = "vim_keymap_starting"
+      multiline_line_num = line_num
+    end
+
+    -- Continue parsing multiline vim.keymap.set
+    if multiline_keymap == "vim_keymap_starting" then
+      -- Check for single mode string
+      local mode_line = line:match('^%s*"([^"]+)",%s*$')
+      if mode_line then
+        multiline_mode = mode_line
+        multiline_keymap = "vim_keymap_mode_found"
+      else
+        -- Check for mode table like { "n", "v" }
+        local mode_table = line:match('^%s*({ [^}]+ }),%s*$')
+        if mode_table then
+          multiline_mode = mode_table
+          multiline_keymap = "vim_keymap_mode_found"
+        end
+      end
+    end
+
+    if multiline_keymap == "vim_keymap_mode_found" then
+      local key_line = line:match('^%s*"([^"]+)",%s*$')
+      if key_line then
+        multiline_lhs = key_line
+        multiline_keymap = "vim_keymap_key_found"
+      end
+    end
+
+    if multiline_keymap == "vim_keymap_key_found" then
+      -- Check if this line contains a function reference (not inline function)
+      if line:match("^%s*[%w_]+,%s*$") then
+        multiline_keymap = "vim_keymap_func_found"
+      end
+    end
+
+    if multiline_keymap == "vim_keymap_func_found" then
+      local desc = line:match('{ desc = "([^"]+)"')
+      if desc then
+        -- Check if multiline_mode is a table of modes
+        if multiline_mode and multiline_mode:match("^{") then
+          -- Extract all modes and create multiple keymaps
+          for mode in multiline_mode:gmatch('"([^"]+)"') do
+            table.insert(keymaps, {
+              lhs = multiline_lhs,
+              rhs = "function",
+              desc = desc,
+              mode = mode,
+              source = file,
+              plugin = in_config_function and config_function_plugin or nil,
+              plugin_disabled = current_plugin_disabled,
+              line_number = multiline_line_num,
+            })
+          end
+        else
+          -- Single mode
+          table.insert(keymaps, {
+            lhs = multiline_lhs,
+            rhs = "function",
+            desc = desc,
+            mode = multiline_mode or "n",
+            source = file,
+            plugin = in_config_function and config_function_plugin or nil,
+            plugin_disabled = current_plugin_disabled,
+            line_number = multiline_line_num,
+          })
+        end
+        multiline_keymap = nil
+        multiline_lhs = nil
+        multiline_line_num = nil
+        multiline_mode = nil
+      end
+    end
+
     M._parse_keymap_patterns(
       line,
       line_num,
@@ -218,7 +312,9 @@ function M._parse_file(file)
       current_plugin,
       keys_section_plugin,
       main_plugin,
-      current_plugin_disabled
+      current_plugin_disabled,
+      in_config_function,
+      config_function_plugin
     )
 
     line_num = line_num + 1
@@ -329,6 +425,8 @@ end
 -- @param keys_section_plugin string Plugin owning the keys section
 -- @param main_plugin string Main plugin for this section
 -- @param current_plugin_disabled boolean Whether current plugin is disabled
+-- @param in_config_function boolean Whether currently in a config function
+-- @param config_function_plugin string Plugin owning the config function
 function M._parse_keymap_patterns(
   line,
   line_num,
@@ -338,7 +436,9 @@ function M._parse_keymap_patterns(
   current_plugin,
   keys_section_plugin,
   main_plugin,
-  current_plugin_disabled
+  current_plugin_disabled,
+  in_config_function,
+  config_function_plugin
 )
   local patterns = {
     function()
@@ -386,6 +486,29 @@ function M._parse_keymap_patterns(
           plugin_disabled = current_plugin_disabled,
           line_number = line_num,
         }
+      end
+    end,
+
+    function()
+      -- Handle { "lhs", desc = "description", mode = { "n", "v" } } pattern
+      local lhs, desc, modes = line:match('{ "([^"]+)",%s*desc = "([^"]+)",%s*mode = ({ [^}]+ })')
+      if lhs then
+        -- Extract all modes from the table and create multiple keymaps
+        local keymaps_to_add = {}
+        for mode in modes:gmatch('"([^"]+)"') do
+          table.insert(keymaps_to_add, {
+            lhs = lhs,
+            rhs = "",
+            desc = desc,
+            mode = mode,
+            source = file,
+            plugin = in_keys_section and (current_plugin or keys_section_plugin or main_plugin) or nil,
+            plugin_disabled = current_plugin_disabled,
+            line_number = line_num,
+          })
+        end
+        -- Return a special marker to indicate multiple keymaps need to be added
+        return { multiple = keymaps_to_add }
       end
     end,
 
@@ -480,7 +603,7 @@ function M._parse_keymap_patterns(
           desc = desc,
           mode = mode,
           source = file,
-          plugin = nil,
+          plugin = in_config_function and config_function_plugin or nil,
           plugin_disabled = false,
           line_number = line_num,
         }
@@ -497,7 +620,7 @@ function M._parse_keymap_patterns(
           desc = desc,
           mode = mode,
           source = file,
-          plugin = nil,
+          plugin = in_config_function and config_function_plugin or nil,
           plugin_disabled = false,
           line_number = line_num,
         }
@@ -513,6 +636,8 @@ function M._parse_keymap_patterns(
           desc = desc,
           mode = "n",
           source = file,
+          plugin = in_config_function and config_function_plugin or nil,
+          plugin_disabled = false,
           line_number = line_num,
         }
       end
@@ -527,6 +652,8 @@ function M._parse_keymap_patterns(
           desc = desc,
           mode = mode == "" and "n" or mode,
           source = file,
+          plugin = in_config_function and config_function_plugin or nil,
+          plugin_disabled = false,
           line_number = line_num,
         }
       end
@@ -637,7 +764,7 @@ function M._parse_keymap_patterns(
           desc = desc,
           mode = mode,
           source = file,
-          plugin = nil,
+          plugin = in_config_function and config_function_plugin or nil,
           plugin_disabled = false,
           line_number = line_num,
         }
@@ -664,7 +791,16 @@ function M._parse_keymap_patterns(
   for _, pattern_func in ipairs(patterns) do
     local keymap = pattern_func()
     if keymap then
-      table.insert(keymaps, keymap)
+      -- Check if this is a multiple keymaps case
+      if keymap.multiple then
+        -- Add all keymaps from the multiple array
+        for _, km in ipairs(keymap.multiple) do
+          table.insert(keymaps, km)
+        end
+      else
+        -- Single keymap, add normally
+        table.insert(keymaps, keymap)
+      end
       break
     end
   end
@@ -970,7 +1106,16 @@ function M._parse_keymap_patterns_for_plugin(
   for _, pattern_func in ipairs(patterns) do
     local keymap = pattern_func()
     if keymap then
-      table.insert(keymaps, keymap)
+      -- Check if this is a multiple keymaps case
+      if keymap.multiple then
+        -- Add all keymaps from the multiple array
+        for _, km in ipairs(keymap.multiple) do
+          table.insert(keymaps, km)
+        end
+      else
+        -- Single keymap, add normally
+        table.insert(keymaps, keymap)
+      end
       break
     end
   end
