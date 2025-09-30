@@ -786,6 +786,23 @@ function M._parse_keymap_patterns(
         }
       end
     end,
+
+    function()
+      -- Handle map() with function reference: map("n", "<leader>gp", copy_github_pr_url, { desc = "..." })
+      local mode, lhs, func_name, desc = line:match('map%("([^"]+)", "([^"]+)", ([%w_]+), { desc = "([^"]+)"')
+      if mode and lhs and func_name then
+        return {
+          lhs = lhs,
+          rhs = func_name,
+          desc = desc,
+          mode = mode,
+          source = file,
+          plugin = nil,
+          plugin_disabled = false,
+          line_number = line_num,
+        }
+      end
+    end,
   }
 
   for _, pattern_func in ipairs(patterns) do
