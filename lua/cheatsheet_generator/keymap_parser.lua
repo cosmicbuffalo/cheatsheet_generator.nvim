@@ -116,6 +116,7 @@ function M._parse_file(file)
   local in_keys_section = false
   local keys_section_plugin = nil
   local keys_section_locked = false
+  local keys_section_depth = 0
   local brace_depth = 0
   local main_plugin = nil
   local main_plugin_depth = 0
@@ -155,7 +156,7 @@ function M._parse_file(file)
       config_function_depth = 0
     end
 
-    current_plugin, main_plugin, main_plugin_depth, current_plugin_disabled, in_keys_section, keys_section_plugin, keys_section_locked =
+    current_plugin, main_plugin, main_plugin_depth, current_plugin_disabled, in_keys_section, keys_section_plugin, keys_section_locked, keys_section_depth =
       M._update_plugin_context(
         line,
         brace_depth,
@@ -166,7 +167,8 @@ function M._parse_file(file)
         current_plugin_disabled,
         in_keys_section,
         keys_section_plugin,
-        keys_section_locked
+        keys_section_locked,
+        keys_section_depth
       )
     if multiline_keymap then
       local desc = line:match('desc = "([^"]+)"')
@@ -334,7 +336,8 @@ end
 -- @param in_keys_section boolean Whether currently in a keys section
 -- @param keys_section_plugin string Plugin owning the keys section
 -- @param keys_section_locked boolean Whether keys section is locked
--- @return string, string, number, boolean, boolean, string, boolean Updated context variables
+-- @param keys_section_depth number Brace depth where keys section started
+-- @return string, string, number, boolean, boolean, string, boolean, number Updated context variables
 function M._update_plugin_context(
   line,
   brace_depth,
@@ -345,7 +348,8 @@ function M._update_plugin_context(
   current_plugin_disabled,
   in_keys_section,
   keys_section_plugin,
-  keys_section_locked
+  keys_section_locked,
+  keys_section_depth
 )
   local plugin_name = line:match('"([%w%-_%.]+/[%w%-_%.]+)"') or line:match("'([%w%-_%.]+/[%w%-_%.]+)'")
   if plugin_name and not keys_section_locked then
@@ -366,6 +370,7 @@ function M._update_plugin_context(
 
   if line:match("keys%s*=") then
     in_keys_section = true
+    keys_section_depth = brace_depth
     keys_section_plugin = current_plugin
     if not keys_section_plugin then
       for depth = brace_depth - 1, 1, -1 do
@@ -378,14 +383,12 @@ function M._update_plugin_context(
     keys_section_locked = true
   end
 
-  if in_keys_section and not line:match("keys%s*=") and not line:match("^%s*{") and not line:match("^%s*%[") then
-    local open_braces = select(2, line:gsub("{", ""))
-    local close_braces = select(2, line:gsub("}", ""))
-    if close_braces > open_braces and (line:match("},%s*$") or line:match("}%s*$")) then
-      in_keys_section = false
-      keys_section_plugin = nil
-      keys_section_locked = false
-    end
+  -- Exit keys section when brace depth falls below where keys section started
+  if in_keys_section and brace_depth < keys_section_depth then
+    in_keys_section = false
+    keys_section_plugin = nil
+    keys_section_locked = false
+    keys_section_depth = 0
   end
 
   for depth = brace_depth + 1, 10 do
@@ -404,6 +407,7 @@ function M._update_plugin_context(
     in_keys_section = false
     keys_section_plugin = nil
     keys_section_locked = false
+    keys_section_depth = 0
   end
 
   return current_plugin,
@@ -412,7 +416,8 @@ function M._update_plugin_context(
     current_plugin_disabled,
     in_keys_section,
     keys_section_plugin,
-    keys_section_locked
+    keys_section_locked,
+    keys_section_depth
 end
 
 --- Parses various keymap patterns from a line and adds them to the keymaps list
@@ -894,6 +899,7 @@ function M._parse_installed_plugin_file(file, plugin_name)
   local in_keys_section = false
   local keys_section_plugin = nil
   local keys_section_locked = false
+  local keys_section_depth = 0
   local brace_depth = 0
   local main_plugin = nil
   local main_plugin_depth = 0
@@ -915,7 +921,7 @@ function M._parse_installed_plugin_file(file, plugin_name)
     local close_braces = select(2, line:gsub("}", ""))
     brace_depth = brace_depth + open_braces - close_braces
 
-    current_plugin, main_plugin, main_plugin_depth, current_plugin_disabled, in_keys_section, keys_section_plugin, keys_section_locked =
+    current_plugin, main_plugin, main_plugin_depth, current_plugin_disabled, in_keys_section, keys_section_plugin, keys_section_locked, keys_section_depth =
       M._update_plugin_context(
         line,
         brace_depth,
@@ -926,7 +932,8 @@ function M._parse_installed_plugin_file(file, plugin_name)
         current_plugin_disabled,
         in_keys_section,
         keys_section_plugin,
-        keys_section_locked
+        keys_section_locked,
+        keys_section_depth
       )
 
     -- Handle multiline keymaps (same logic as original _parse_file)
