@@ -238,7 +238,7 @@ function M._parse_file(file)
     -- Continue parsing multiline vim.keymap.set
     if multiline_keymap == "vim_keymap_starting" then
       -- Check for single mode string
-      local mode_line = line:match('^%s*"([^"]+)",%s*$')
+      local mode_line = line:match('^%s*"([^"]*)",%s*$')
       if mode_line then
         multiline_mode = mode_line
         multiline_keymap = "vim_keymap_mode_found"
@@ -250,24 +250,18 @@ function M._parse_file(file)
           multiline_keymap = "vim_keymap_mode_found"
         end
       end
-    end
-
-    if multiline_keymap == "vim_keymap_mode_found" then
-      local key_line = line:match('^%s*"([^"]+)",%s*$')
+    elseif multiline_keymap == "vim_keymap_mode_found" then
+      local key_line = line:match('^%s*"([^"]*)",%s*$')
       if key_line then
         multiline_lhs = key_line
         multiline_keymap = "vim_keymap_key_found"
       end
-    end
-
-    if multiline_keymap == "vim_keymap_key_found" then
+    elseif multiline_keymap == "vim_keymap_key_found" then
       -- Check if this line contains a function reference (not inline function)
       if line:match("^%s*[%w_]+,%s*$") then
         multiline_keymap = "vim_keymap_func_found"
       end
-    end
-
-    if multiline_keymap == "vim_keymap_func_found" then
+    elseif multiline_keymap == "vim_keymap_func_found" then
       local desc = line:match('{ desc = "([^"]+)"')
       if desc then
         -- Check if multiline_mode is a table of modes
