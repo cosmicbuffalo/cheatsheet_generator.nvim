@@ -124,6 +124,8 @@ function M._parse_file(file)
   local in_config_function = false
   local config_function_plugin = nil
   local config_function_depth = 0
+  local in_keymap_section = false
+  local keymap_section_depth = 0
 
   local multiline_keymap = nil
   local multiline_lhs = nil
@@ -154,6 +156,18 @@ function M._parse_file(file)
       in_config_function = false
       config_function_plugin = nil
       config_function_depth = 0
+    end
+
+    -- Check if we're entering a keymap section
+    if line:match("keymap%s*=") then
+      in_keymap_section = true
+      keymap_section_depth = brace_depth
+    end
+
+    -- Check if we're exiting the keymap section
+    if in_keymap_section and brace_depth < keymap_section_depth then
+      in_keymap_section = false
+      keymap_section_depth = 0
     end
 
     current_plugin, main_plugin, main_plugin_depth, current_plugin_disabled, in_keys_section, keys_section_plugin, keys_section_locked, keys_section_depth =
@@ -238,7 +252,7 @@ function M._parse_file(file)
     -- Continue parsing multiline vim.keymap.set
     if multiline_keymap == "vim_keymap_starting" then
       -- Check for single mode string
-      local mode_line = line:match('^%s*"([^"]+)",%s*$')
+      local mode_line = line:match('^%s*"([^"]*)",%s*$')
       if mode_line then
         multiline_mode = mode_line
         multiline_keymap = "vim_keymap_mode_found"
@@ -250,24 +264,18 @@ function M._parse_file(file)
           multiline_keymap = "vim_keymap_mode_found"
         end
       end
-    end
-
-    if multiline_keymap == "vim_keymap_mode_found" then
-      local key_line = line:match('^%s*"([^"]+)",%s*$')
+    elseif multiline_keymap == "vim_keymap_mode_found" then
+      local key_line = line:match('^%s*"([^"]*)",%s*$')
       if key_line then
         multiline_lhs = key_line
         multiline_keymap = "vim_keymap_key_found"
       end
-    end
-
-    if multiline_keymap == "vim_keymap_key_found" then
+    elseif multiline_keymap == "vim_keymap_key_found" then
       -- Check if this line contains a function reference (not inline function)
       if line:match("^%s*[%w_]+,%s*$") then
         multiline_keymap = "vim_keymap_func_found"
       end
-    end
-
-    if multiline_keymap == "vim_keymap_func_found" then
+    elseif multiline_keymap == "vim_keymap_func_found" then
       local desc = line:match('{ desc = "([^"]+)"')
       if desc then
         -- Check if multiline_mode is a table of modes
@@ -316,7 +324,8 @@ function M._parse_file(file)
       main_plugin,
       current_plugin_disabled,
       in_config_function,
-      config_function_plugin
+      config_function_plugin,
+      in_keymap_section
     )
 
     line_num = line_num + 1
@@ -432,6 +441,7 @@ end
 -- @param current_plugin_disabled boolean Whether current plugin is disabled
 -- @param in_config_function boolean Whether currently in a config function
 -- @param config_function_plugin string Plugin owning the config function
+-- @param in_keymap_section boolean Whether currently in a keymap section
 function M._parse_keymap_patterns(
   line,
   line_num,
@@ -443,7 +453,8 @@ function M._parse_keymap_patterns(
   main_plugin,
   current_plugin_disabled,
   in_config_function,
-  config_function_plugin
+  config_function_plugin,
+  in_keymap_section
 )
   local patterns = {
     function()
@@ -681,13 +692,17 @@ function M._parse_keymap_patterns(
     end,
 
     function()
-      local lsp_action, lsp_key = line:match('([%w_]+)%s*=%s*"([^"]+)"')
+      if not in_keymap_section then
+        return
+      end
+
+      local lsp_action, lsp_key = line:match('^%s*([%w_]+)%s*=%s*"([^"]+)"')
       if
         lsp_action
         and lsp_key
         and file:match("lsp%.lua")
         and not line:match("desc%s*=")
-        and (lsp_key:match("^<") or lsp_key:match("^%[") or lsp_key:match("^g") or lsp_key:match("^K$"))
+        and not lsp_key:match("%s")
       then
         return {
           lhs = lsp_key,
