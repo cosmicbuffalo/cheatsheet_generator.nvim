@@ -84,7 +84,7 @@ require("cheatsheet_generator").setup({
   output = {
     file = "CHEATSHEET.md",
     title = "Neovim Keymap Cheatsheet",
-    include_date = true,
+    include_date = true, -- set to false to omit the "Up to date as of" line, keeping output stable for CI diffs
     generation_info = {
       enabled = true,
     },
