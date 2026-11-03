@@ -18,8 +18,12 @@ function M.generate_markdown(keymaps, config)
   end
 
   table.insert(lines, "")
-  table.insert(lines, "Up to date as of: " .. os.date("%Y-%m-%d"))
-  table.insert(lines, "")
+
+  local include_date = not (config and config.output and config.output.include_date == false)
+  if include_date then
+    table.insert(lines, "Up to date as of: " .. os.date("%Y-%m-%d"))
+    table.insert(lines, "")
+  end
 
   M._add_generation_info(lines, config)
 
