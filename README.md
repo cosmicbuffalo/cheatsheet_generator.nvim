@@ -76,9 +76,9 @@ require("cheatsheet_generator").setup({
   },
   -- Git detection configuration
   git = {
-    enabled = true, -- default behavior looks at your git repo to create source links
+    enabled = true, -- set to false to leave sources from your config repo as plain text instead of links
     default_branch = "main", -- the branch to use for source links
-    base_url = nil, -- the base url to use for git links, leave nil to auto-detect 
+    base_url = nil, -- e.g. "https://github.com/you/nvim-config"; leave nil to use the origin remote. Set it when contributors work from forks, so links don't depend on their remote
   },
   -- Output configuration
   output = {
