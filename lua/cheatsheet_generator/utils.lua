@@ -91,12 +91,30 @@ function M.normalize_description(desc)
   return desc
 end
 
---- Gets GitHub repository information from git remote
+--- Gets GitHub repository information for links to files in the config repo
+-- Honors config.git: `enabled = false` disables these links, `base_url` replaces the
+-- origin remote, and `default_branch` sets the branch. config.output.github_info, when
+-- set, still takes precedence over all of them.
 -- @param config table Optional configuration containing github info
--- @return table|nil GitHub info with url and branch, or nil if not a GitHub repo
+-- @return table|nil GitHub info with url and branch, or nil if links are disabled or not a GitHub repo
 function M.get_github_info(config)
   if config and config.output and config.output.github_info then
     return config.output.github_info
+  end
+
+  local git = (config and config.git) or {}
+  if git.enabled == false then
+    return nil
+  end
+
+  local branch = git.default_branch or "main"
+
+  if git.base_url then
+    local url = git.base_url:gsub("^git@github%.com:", "https://github.com/"):gsub("/+$", ""):gsub("%.git$", "")
+    return {
+      url = url,
+      branch = branch,
+    }
   end
 
   local success, handle = pcall(io.popen, "git remote get-url origin 2>/dev/null")
@@ -124,8 +142,6 @@ function M.get_github_info(config)
   else
     return nil
   end
-
-  local branch = "main"
 
   return {
     url = github_url,
