@@ -258,7 +258,7 @@ function M._parse_file(file)
         multiline_keymap = "vim_keymap_mode_found"
       else
         -- Check for mode table like { "n", "v" }
-        local mode_table = line:match('^%s*({ [^}]+ }),%s*$')
+        local mode_table = line:match("^%s*({ [^}]+ }),%s*$")
         if mode_table then
           multiline_mode = mode_table
           multiline_keymap = "vim_keymap_mode_found"
