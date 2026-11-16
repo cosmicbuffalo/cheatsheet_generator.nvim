@@ -232,3 +232,13 @@ The generated cheatsheet includes:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+
+Before opening a pull request, run the same checks CI runs:
+
+```sh
+stylua --check .
+nvim --clean --headless -l tests/load_modules.lua
+nvim --clean --headless -l tests/run.lua
+```
+
+`tests/run.lua` generates a cheatsheet from the small config in `tests/fixture` and checks the output. If you change how keymaps are parsed or formatted, add a keymap to the fixture and a check to the script.
