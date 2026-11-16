@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  stylua:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check formatting
+        uses: JohnnyMorganz/stylua-action@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: 2.3.1
+          args: --check .
+
+  test:
+    name: test (${{ matrix.nvim }})
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.nvim == 'nightly' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        nvim: [v0.11.7, stable, nightly]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Neovim ${{ matrix.nvim }}
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/nvim.tar.gz" \
+            "https://github.com/neovim/neovim/releases/download/${{ matrix.nvim }}/nvim-linux-x86_64.tar.gz"
+          tar -C "$RUNNER_TEMP" -xzf "$RUNNER_TEMP/nvim.tar.gz"
+          echo "$RUNNER_TEMP/nvim-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+      - name: Show Neovim version
+        run: nvim --version | head -n 1
+
+      - name: Load every module
+        run: nvim --clean --headless -l tests/load_modules.lua
+
+      - name: Generate a cheatsheet from the fixture config
+        run: nvim --clean --headless -l tests/run.lua
