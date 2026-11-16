@@ -5,21 +5,36 @@ local utils = require("cheatsheet_generator.utils")
 local keymap_parser = require("cheatsheet_generator.keymap_parser")
 local M = {}
 
+--- Loads the built-in keymap definitions named by config.built_in_keymaps
+-- @param config table|nil Configuration object
+-- @return table|nil Built-in keymap definitions, or nil if disabled or none could be loaded
+function M._load_built_in_keymaps(config)
+  local built_in_config = (config and config.built_in_keymaps) or {}
+  if built_in_config.enabled == false then
+    return nil
+  end
+
+  local module = built_in_config.module or "cheatsheet_generator.built_in_keymaps"
+  local ok, built_in_keymaps = pcall(require, module)
+  if ok then
+    return built_in_keymaps
+  end
+  print("Warning: Could not load " .. module .. ", falling back to config.built_in_keymaps")
+  ok, built_in_keymaps = pcall(require, "config.built_in_keymaps")
+  if ok then
+    return built_in_keymaps
+  end
+  print("Warning: Could not load config.built_in_keymaps, leaving out built-in keymaps")
+  return nil
+end
+
 --- Collects all keymaps from runtime, built-in definitions, and static analysis
 -- @param config table Configuration object
 -- @return table List of all collected keymaps
 function M.collect_all_keymaps(config)
   local all_keymaps = {}
 
-  local built_in_keymaps_ok, built_in_keymaps = pcall(require, "cheatsheet_generator.built_in_keymaps")
-  if not built_in_keymaps_ok then
-    print("Warning: Could not load cheatsheet_generator.built_in_keymaps, falling back to config.built_in_keymaps")
-    built_in_keymaps_ok, built_in_keymaps = pcall(require, "config.built_in_keymaps")
-    if not built_in_keymaps_ok then
-      print("Warning: Could not load config.built_in_keymaps, falling back to hardcoded built-in keymaps")
-      built_in_keymaps = nil
-    end
-  end
+  local built_in_keymaps = M._load_built_in_keymaps(config)
 
   local modes = { "n", "i", "v", "x", "s", "o", "t", "c" }
 
