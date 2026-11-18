@@ -59,7 +59,9 @@ function M._add_generation_info(lines, config)
   end
 
   table.insert(lines, "")
-  table.insert(lines, "- Built-in Neovim defaults")
+  if not (config and config.built_in_keymaps and config.built_in_keymaps.enabled == false) then
+    table.insert(lines, "- Built-in Neovim defaults")
+  end
 
   if config and config.config_keymap_files then
     for _, config_file in ipairs(config.config_keymap_files) do

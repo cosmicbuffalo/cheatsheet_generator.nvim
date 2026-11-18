@@ -442,6 +442,24 @@ end
 -- @param in_config_function boolean Whether currently in a config function
 -- @param config_function_plugin string Plugin owning the config function
 -- @param in_keymap_section boolean Whether currently in a keymap section
+--- Expands a keymap from a lazy keys entry with a mode table into one keymap per mode.
+-- The patterns capture the first mode at most, and the mode table can sit anywhere in the
+-- entry, so the modes are read from the line itself.
+-- @param line string The source line the keymap was matched from
+-- @param keymap table The matched keymap
+-- @return table List of keymaps: one per mode, or just `keymap` if the line has no mode table
+function M._expand_table_modes(line, keymap)
+  local modes = line:match('^%s*{ "[^"]+",.-mode = ({ [^}]+ })')
+  if not modes then
+    return { keymap }
+  end
+  local expanded = {}
+  for mode in modes:gmatch('"([^"]+)"') do
+    table.insert(expanded, vim.tbl_extend("force", keymap, { mode = mode }))
+  end
+  return #expanded > 0 and expanded or { keymap }
+end
+
 function M._parse_keymap_patterns(
   line,
   line_num,
@@ -525,6 +543,24 @@ function M._parse_keymap_patterns(
         end
         -- Return a special marker to indicate multiple keymaps need to be added
         return { multiple = keymaps_to_add }
+      end
+    end,
+
+    function()
+      -- Handle { "lhs", rhs, mode = { "n", "v" }, desc = "description" }. The loop below expands
+      -- the mode table into one keymap per mode.
+      local lhs, rhs, desc = line:match('{ "([^"]+)",%s*(.-),%s*mode = { [^}]+ },%s*desc = "([^"]+)"')
+      if lhs then
+        return {
+          lhs = lhs,
+          rhs = rhs,
+          desc = desc,
+          mode = "n",
+          source = file,
+          plugin = in_keys_section and (current_plugin or keys_section_plugin or main_plugin) or nil,
+          plugin_disabled = current_plugin_disabled,
+          line_number = line_num,
+        }
       end
     end,
 
@@ -835,8 +871,7 @@ function M._parse_keymap_patterns(
           table.insert(keymaps, km)
         end
       else
-        -- Single keymap, add normally
-        table.insert(keymaps, keymap)
+        vim.list_extend(keymaps, M._expand_table_modes(line, keymap))
       end
       break
     end
@@ -1108,6 +1143,25 @@ function M._parse_keymap_patterns_for_plugin(
     end,
 
     function()
+      -- Handle { "lhs", rhs, mode = { "n", "v" }, desc = "description" }. The loop below expands
+      -- the mode table into one keymap per mode.
+      local lhs, rhs, desc = line:match('{ "([^"]+)",%s*(.-),%s*mode = { [^}]+ },%s*desc = "([^"]+)"')
+      if lhs then
+        return {
+          lhs = lhs,
+          rhs = rhs,
+          desc = desc,
+          mode = "n",
+          source = M._format_plugin_source(file, repo_info),
+          plugin = in_keys_section and (current_plugin or keys_section_plugin or main_plugin) or nil,
+          plugin_disabled = current_plugin_disabled,
+          line_number = line_num,
+          repo_info = repo_info,
+        }
+      end
+    end,
+
+    function()
       local lhs, rhs, desc, mode = line:match('{ "([^"]+)",%s*"([^"]+)",%s*desc = "([^"]+)",%s*mode = "([^"]+)"')
       if lhs then
         return {
@@ -1152,8 +1206,7 @@ function M._parse_keymap_patterns_for_plugin(
           table.insert(keymaps, km)
         end
       else
-        -- Single keymap, add normally
-        table.insert(keymaps, keymap)
+        vim.list_extend(keymaps, M._expand_table_modes(line, keymap))
       end
       break
     end

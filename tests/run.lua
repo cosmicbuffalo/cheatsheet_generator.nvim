@@ -20,8 +20,9 @@ local function check(name, ok, detail)
   end
 end
 
---- Runs the generator with `output` merged over the base config and returns the markdown.
-local function generate(output)
+--- Runs the generator with `output` merged over the base output config and `overrides` over the
+-- top-level config, and returns the markdown.
+local function generate(output, overrides)
   local out_file = vim.fn.tempname() .. ".md"
   local config = {
     plugin_dirs = { "lua/plugins" },
@@ -32,6 +33,7 @@ local function generate(output)
       github_info = { url = "https://github.com/example/cfg", branch = "main" },
     }, output or {}),
   }
+  config = vim.tbl_extend("force", config, overrides or {})
   local result = vim
     .system({
       vim.v.progpath,
@@ -77,12 +79,37 @@ check(
 )
 check("plugin section heading", has(md, "## Plugin: example.nvim"))
 check(
+  "mode table before desc lists every mode",
+  has(
+    md,
+    "| `<leader>xa` | `n` `v` | Mode Table Before Desc | [`lua/plugins/example.lua:7`]("
+      .. link
+      .. "lua/plugins/example.lua#L7) |"
+  )
+)
+check(
+  "mode table after desc lists every mode",
+  has(
+    md,
+    "| `<leader>xb` | `n` `x` | Mode Table After Desc | [`lua/plugins/example.lua:8`]("
+      .. link
+      .. "lua/plugins/example.lua#L8) |"
+  )
+)
+check(
   "config keymap",
   has(md, "| `<leader>qq` | `n` | Quit All | [`lua/config/keymaps.lua:1`](" .. link .. "lua/config/keymaps.lua#L1) |")
 )
 check("built-in keymaps", has(md, "| `dd` | `n` | Delete line | <sub>Built-in Neovim default</sub> |"))
 check("no keymaps from installed recipe repos", not has(md, "lazy_ufo_recipe") and not has(md, "lazy_jumpliner_recipe"))
 check("include_date = false omits the date", not md:find("%d%d%d%d%-%d%d%-%d%d"))
+
+local without_built_ins = generate({ include_date = false }, { built_in_keymaps = { enabled = false } })
+check("built_in_keymaps.enabled = false leaves out built-ins", not has(without_built_ins, "Built-in Neovim default"))
+check(
+  "built_in_keymaps.enabled = false keeps plugin keymaps",
+  has(without_built_ins, "| `<leader>xe` | `n` | Open Example |")
+)
 
 local dated = generate({ include_date = true })
 check("include_date = true adds the date", dated:find(os.date("%Y-%m-%d"), 1, true) ~= nil)
